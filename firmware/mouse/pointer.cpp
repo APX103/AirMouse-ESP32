@@ -203,14 +203,15 @@ void Pointer::onQuatRate(Quat q, uint32_t tMs) {
     speedEma += 0.25f * (dps - speedEma);
   }
 
-  // 静止状态机
+  // 静止状态机（阈值面向真陀螺速度：进入 1.2°/s，解冻只需 2°/s 或瞬时 2.5°/s——
+  // 从静止开始的缓慢移动必须立刻解冻，否则"轻推不动"）
   if (!frozen) {
-    if (speedEma > MOTION_DPS) lastMoveT = tMs;
+    if (speedEma > 2.0f) lastMoveT = tMs;
     if (tMs - lastMoveT > FREEZE_DELAY_MS && speedEma < STATIONARY_DPS) enterFreeze();
   }
   if (frozen) {
     if (!haveEntry) { qEntry = q; entryT = tMs; haveEntry = true; }
-    if (speedEma > MOTION_DPS) exitFreeze();
+    if (speedEma > 2.0f || (haveGyro && vlen(gyroBody) > 2.5f)) exitFreeze();
     return;   // 冻结期不积分 → 静止零漂移
   }
   haveEntry = false;
