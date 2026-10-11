@@ -17,9 +17,11 @@ public:
 
   // 每收到一个 GRV 报告调用一次（MODE_ABS）
   void onQuat(Quat q, uint32_t tMs);
-  // MODE_RATE（M2 链路验证）：角度增量直接乘增益
+  // MODE_RATE：无限积分模式（陀螺直接积分，见 pointer.cpp）
   void onQuatRate(Quat q, uint32_t tMs);
   void onQuatLog(Quat q, uint32_t tMs) { lastQ = q; (void)tMs; }
+  // 喂陀螺原始角速度（°/s 机体系，去偏）——积分模式的角速度来源
+  void feedGyro(float wx, float wy, float wz) { gyroBody = {wx, wy, wz}; haveGyro = true; }
 
   void recenter();                        // 用当前指向重建锚点，光标跳屏幕中心
   // 点击冻结（左/右键按住期间）
@@ -69,6 +71,7 @@ private:
 
   // 无限积分模式（mode rate）
   Vec3  ratePrev{}; bool haveRatePrev = false;
+  Vec3  gyroBody{}; bool haveGyro = false;   // 陀螺角速度 °/s（机体系）
 
   // 输出
   OneEuro euroX, euroY;

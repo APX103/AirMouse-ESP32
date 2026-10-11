@@ -26,6 +26,11 @@ public:
   uint8_t type() const { return type_; }
   uint8_t lastCal = 0; // 最近校准状态 0..3（ICM 恒 3）
 
+  // ICM 路径：最近一次去偏后的陀螺角速度（°/s，机体系）
+  // 无限积分模式直接积分它——四元数帧间差分是噪声地板，不可当角速度用
+  float gyroDps[3] = {0, 0, 0};
+  float gyroMagDps = 0;
+
   volatile bool intFlag = false;
 
 private:

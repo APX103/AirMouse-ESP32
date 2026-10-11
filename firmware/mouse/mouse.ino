@@ -54,6 +54,7 @@ static void pipelineTask(void *) {
     uint8_t cal = 0;
     if (imu.poll(q, cal)) {
       lastQ = q; lastCal = cal;
+      pointer.feedGyro(imu.gyroDps[0], imu.gyroDps[1], imu.gyroDps[2]);
       uint32_t t = millis();
       switch (params.mode) {
         case MODE_ABS:  pointer.onQuat(q, t); break;

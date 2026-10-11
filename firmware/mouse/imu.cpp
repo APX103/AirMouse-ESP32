@@ -124,9 +124,13 @@ void Imu::pollIcm(Quat &q, bool &out) {
   lastIcmUs_ = nowUs;
 
   icm_.getAGMT();
-  float gx = (icm_.gyrX() - gBias[0]) * DEG2RAD;
-  float gy = (icm_.gyrY() - gBias[1]) * DEG2RAD;
-  float gz = (icm_.gyrZ() - gBias[2]) * DEG2RAD;
+  gyroDps[0] = icm_.gyrX() - gBias[0];   // °/s，去偏（供积分模式直接使用）
+  gyroDps[1] = icm_.gyrY() - gBias[1];
+  gyroDps[2] = icm_.gyrZ() - gBias[2];
+  gyroMagDps = sqrtf(gyroDps[0]*gyroDps[0] + gyroDps[1]*gyroDps[1] + gyroDps[2]*gyroDps[2]);
+  float gx = gyroDps[0] * DEG2RAD;
+  float gy = gyroDps[1] * DEG2RAD;
+  float gz = gyroDps[2] * DEG2RAD;
   float ax = icm_.accX() / 1000.0f; // milli-g → g
   float ay = icm_.accY() / 1000.0f;
   float az = icm_.accZ() / 1000.0f;
