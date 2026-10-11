@@ -103,6 +103,7 @@ void Shell::handle(char *line) {
     if (a2) par->freezeDeg = atof(a2);
     Serial.printf("freeze %ums %.1fdeg\n", par->freezeMs, par->freezeDeg);
   } else if (!strcasecmp(cmd, "driftcomp") && a1) { parseOnOff(a1, par->driftComp); Serial.printf("driftcomp=%d\n", par->driftComp); }
+  else if (!strcasecmp(cmd, "soft") && a1) { parseOnOff(a1, par->softEdge); ptr->resyncFilter(); Serial.printf("softEdge=%d\n", par->softEdge); }
   else if (!strcasecmp(cmd, "rategain") && a1) { par->rateGain = atof(a1); Serial.printf("rategain=%.1f\n", par->rateGain); }
   else if (!strcasecmp(cmd, "sensor")) {
     if (!a1) { Serial.printf("sensor=%s\n", par->sensor == SENSOR_BNO085 ? "bno085" : "icm20948"); return; }
@@ -123,6 +124,7 @@ void Shell::handle(char *line) {
     prefs.putFloat("euroFc", par->euroFc);  prefs.putFloat("euroBeta", par->euroBeta);
     prefs.putUShort("deadPx", par->deadPx); prefs.putUShort("freezeMs", par->freezeMs);
     prefs.putFloat("freezeDeg", par->freezeDeg); prefs.putBool("driftComp", par->driftComp);
+    prefs.putBool("softEdge", par->softEdge);
     prefs.putFloat("rateGain", par->rateGain);   prefs.putUChar("mode", par->mode);
     prefs.putUChar("sensor", par->sensor);
     prefs.end();
@@ -157,6 +159,7 @@ void Shell::loadFromNvs() {
   par->freezeMs = prefs.getUShort("freezeMs", par->freezeMs);
   par->freezeDeg = prefs.getFloat("freezeDeg", par->freezeDeg);
   par->driftComp = prefs.getBool("driftComp", par->driftComp);
+  par->softEdge = prefs.getBool("softEdge", par->softEdge);
   par->rateGain = prefs.getFloat("rateGain", par->rateGain);
   par->mode = prefs.getUChar("mode", par->mode);
   par->sensor = prefs.getUChar("sensor", par->sensor);
@@ -164,7 +167,8 @@ void Shell::loadFromNvs() {
 }
 
 void Shell::printStat() {
-  Serial.printf("== AirMouse-WL 鼠标端 | up %lus ==\n", millis() / 1000UL);
+  Serial.printf("== AirMouse-WL 鼠标端 v0.2 | up %lus | 芯片温度 %d°C ==\n",
+                millis() / 1000UL, temperatureRead());
   Serial.printf("mode=%s sensor=%s imu=%s addr=0x%02X rate=%luHz cal=%u/3\n",
                 MODE_NAMES[par->mode],
                 par->sensor == SENSOR_BNO085 ? "bno085" : "icm20948",
@@ -177,9 +181,9 @@ void Shell::printStat() {
   Serial.printf("speed=%.2f°/s frozen=%d click=%d anchored=%d model=(%d,%d)\n",
                 ptr->speedEma, ptr->frozen, ptr->clickFrozen(), ptr->anchored,
                 ptr->modelX(), ptr->modelY());
-  Serial.printf("fov=%.1f/%.1f scr=%ux%u mount=%s invX=%d invY=%d driftcomp=%d\n",
+  Serial.printf("fov=%.1f/%.1f scr=%ux%u mount=%s invX=%d invY=%d driftcomp=%d soft=%d\n",
                 par->fovH, par->fovV, par->scrW, par->scrH,
-                AXIS_NAMES[par->fwd], par->invX, par->invY, par->driftComp);
+                AXIS_NAMES[par->fwd], par->invX, par->invY, par->driftComp, par->softEdge);
 }
 
 void Shell::i2cScan() {

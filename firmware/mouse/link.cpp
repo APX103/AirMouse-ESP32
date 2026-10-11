@@ -1,4 +1,5 @@
 #include "link.h"
+#include <esp_wifi.h>   // esp_wifi_set_max_tx_power
 
 static const uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -13,6 +14,8 @@ bool Link::begin() {
   peer.encrypt = false;
   if (esp_now_add_peer(&peer) != ESP_OK) return false;
   peerAdded_ = true;
+  // 降温&省电：发射功率 19.5dBm → 10dBm（室内距离足够）
+  esp_wifi_set_max_tx_power(40);  // 单位 0.25dBm
   return true;
 }
 

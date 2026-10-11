@@ -63,11 +63,13 @@ void Pointer::onQuat(Quat q, uint32_t tMs) {
     if (!haveEntry) { // 冻结入口：记下当时的射线与时间，供重锚定/漂移估计用
       dEntry = dW; qEntry = q; entryT = tMs; haveEntry = true;
     } else if (par->driftComp && tMs - entryT > 3000) {
-      // 静止期在线漂移率：yaw 相对入口的变化 ÷ 时间
+      // 静止期在线漂移率估计。守卫：斜仰角（水平投影短）不估计；
+      // 静止期真漂移不可能超 0.5°/s，超了判为真运动丢弃；EMA 平滑。
       Vec3 he = horiz(dEntry), hn = horiz(dW);
-      if (vlen(he) > 0.05f && vlen(hn) > 0.05f) {
-        driftDps = yawBetween(he, hn) * RAD2DEG / ((tMs - entryT) / 1000.0f);
-        if (fabsf(driftDps) > 2.0f) driftDps = 0; // 异常大 → 判为真运动，丢弃
+      if (vlen(he) > 0.35f && vlen(hn) > 0.35f) {
+        float dps = yawBetween(he, hn) * RAD2DEG / ((tMs - entryT) / 1000.0f);
+        if (fabsf(dps) < 0.5f)
+          driftDps += 0.1f * (dps - driftDps);
       }
     }
     return; // 冻结期间不更新光标
@@ -88,6 +90,12 @@ void Pointer::onQuat(Quat q, uint32_t tMs) {
     float v = (dW.z / dxw) / tanV_;
     if (par->invX) u = -u;
     if (par->invY) v = -v;
+    if (par->softEdge) {
+      // 软边界：中心区灵敏度不变(tanh'(0)=1)，越靠边缘每度位移越小，
+      // 渐近逼近永不到达——替代"到FOV边撞墙硬停"的硬钳制
+      u = tanhf(u);
+      v = tanhf(v);
+    }
     rawU = clampf(u, -1.0f, 1.0f);
     rawV = clampf(v, -1.0f, 1.0f);
     Xf = (rawU * 0.5f + 0.5f) * (par->scrW - 1);
@@ -112,12 +120,15 @@ void Pointer::enterFreeze() {
 }
 
 void Pointer::exitFreeze() {
-  // 重锚定：把锚点 x̂ 旋过"冻结入口→现在"的 yaw 量。
-  // 效果：恢复运动瞬间，当前指向仍映射到冻结前的光标位置 → 静止期间的漂移被悄悄清零。
+  // 重锚定：把锚点 x̂ 旋过"冻结入口→现在"的 yaw 量，恢复运动时位置无缝衔接。
+  // 守卫（防"一边有墙"）：两次水平投影都要足够长（非斜仰角），单次修正限幅 ±2.9°，
+  // 超限视为噪声/真运动拒绝——否则锚点游走，有效指向窗口偏离屏幕 → 某侧转不到底。
   if (haveEntry) {
     Vec3 he = horiz(dEntry), hn = horiz(dW);
-    if (vlen(he) > 0.05f && vlen(hn) > 0.05f) {
-      xhat = rotZ(xhat, yawBetween(he, hn));
+    if (vlen(he) > 0.35f && vlen(hn) > 0.35f) {
+      float yaw = yawBetween(he, hn);
+      if (yaw > -0.05f && yaw < 0.05f)
+        xhat = rotZ(xhat, yaw);
     }
   }
   frozen = false;

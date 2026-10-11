@@ -43,7 +43,8 @@ struct Params {
   uint16_t deadPx    = 1;      // 静止滞回死区(px)
   uint16_t freezeMs  = 300;    // 点击冻结：按住多久后才允许转成拖拽
   float    freezeDeg = 3.0f;   // 点击冻结：姿态转动超过几度才转拖拽
-  bool     driftComp = false;  // 在线 yaw 漂移补偿（M1 实测后再决定开不开）
+  bool     driftComp = true;   // 在线 yaw 漂移补偿（v0.2 起默认开）
+  bool     softEdge  = true;   // 软边界：tanh 压缩映射，边缘渐近无硬锁（off=硬钳制）
   float    rateGain  = 15.0f;  // MODE_RATE：px/deg（M2 验证用）
   uint8_t  mode      = MODE_ABS;
 };
