@@ -67,6 +67,9 @@ private:
   Quat  qEntry;  uint32_t entryT = 0, clickDownT = 0;
   bool  clickFrozen_ = false;
 
+  // 无限积分模式（mode rate）
+  Vec3  ratePrev{}; bool haveRatePrev = false;
+
   // 输出
   OneEuro euroX, euroY;
   int sentX = 0, sentY = 0;

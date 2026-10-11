@@ -47,7 +47,7 @@ struct Params {
   bool     driftComp = true;   // 在线 yaw 漂移补偿（v0.2 起默认开）
   bool     softEdge  = false;  // 软边界(tanh)边缘渐近：实测'永远差一点到不了边'手感更差，默认关
   float    rateGain  = 15.0f;  // MODE_RATE：px/deg（M2 验证用）
-  uint8_t  mode      = MODE_ABS;
+  uint8_t  mode      = MODE_RATE; // 无限积分模式（用户选定）；abs=ray-cast绝对指点保留可选
 };
 
 // ============ 静止检测阈值（先硬编码；够用就不提参数）============

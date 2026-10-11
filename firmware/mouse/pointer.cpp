@@ -177,23 +177,68 @@ bool Pointer::dragArmed() const {
          (qAngleDeg(qEntry, lastQ) > par->freezeDeg);
 }
 
-// ---------------- MODE_RATE（M2：验证 HID 链路）----------------
+// ---------------- MODE_RATE：无限积分模式（商用空鼠路线）----------------
+// 光标位置 = 转角 × 灵敏度的无界积分。fovH/fovV 在此模式下的语义就是灵敏度：
+//   fov 75  ⇔  水平转 75° = 走完一个屏宽（px/deg = scrW/fovH）
+// 无锚点、无 FOV 窗口、无墙：屏幕边缘只是输出钳制位，回转立即响应（无死区）。
+// 继承打磨件：静止冻结（冻结期不积分 → 静止零漂移）、点击冻结、One-Euro、BOOT 回中。
 void Pointer::onQuatRate(Quat q, uint32_t tMs) {
   lastQ = q;
+  float dt = lastT ? (tMs - lastT) / 1000.0f : 0.01f;
+  lastT = tMs;
+  if (dt <= 0.0f || dt > 0.5f) dt = 0.01f;
+
+  // 角速度 EMA（静止/点击状态机共用）
+  if (havePrev) {
+    float dps = qAngleDeg(prevQ, q) / dt;
+    speedEma += 0.25f * (dps - speedEma);
+  }
+  prevQ = q; havePrev = true;
+
   Vec3 d = qrot(q, fwdVec());
-  static Vec3 prev; static bool havePrevRate = false;
-  if (havePrevRate) {
-    Vec3 he = horiz(prev), hn = horiz(d);
-    if (vlen(he) > 0.05f && vlen(hn) > 0.05f) {
-      float dyaw = yawBetween(he, hn) * RAD2DEG;
-      float dpit = (asinf(clampf(d.z, -1, 1)) - asinf(clampf(prev.z, -1, 1))) * RAD2DEG;
-      if (par->invX) dyaw = -dyaw;
-      if (par->invY) dpit = -dpit;
-      int dx = (int)lroundf(par->rateGain * dyaw);
-      int dy = (int)lroundf(-par->rateGain * dpit);
-      if ((dx || dy) && moveCb) moveCb(dx, dy);
+
+  // 静止状态机（同 abs 模式）
+  if (!frozen) {
+    if (speedEma > MOTION_DPS) lastMoveT = tMs;
+    if (tMs - lastMoveT > FREEZE_DELAY_MS && speedEma < STATIONARY_DPS) enterFreeze();
+  }
+  if (frozen) {
+    if (!haveEntry) { qEntry = q; entryT = tMs; haveEntry = true; }
+    ratePrev = d; haveRatePrev = true; // 冻结期不积分但保持连续（解冻增量只算新运动）
+    if (speedEma > MOTION_DPS) exitFreeze(); // exitFreeze 对积分模式无操作副作用
+    return;
+  }
+  haveEntry = false;
+
+  if (!haveRatePrev) { ratePrev = d; haveRatePrev = true; return; }
+
+  // 一阶角度差分（重力系，roll 免疫）
+  Vec3 he = horiz(ratePrev), hn = horiz(d);
+  if (vlen(he) > 0.35f && vlen(hn) > 0.35f) {
+    float dyaw = yawBetween(he, hn) * RAD2DEG;
+    float dpit = (asinf(clampf(d.z, -1, 1)) - asinf(clampf(ratePrev.z, -1, 1))) * RAD2DEG;
+    if (par->invX) dyaw = -dyaw;
+    if (par->invY) dpit = -dpit;
+
+    // FOV = 灵敏度：fovH° 水平转动 ↔ 全屏宽
+    float gainX = (par->scrW - 1) / par->fovH;   // px/deg
+    float gainY = (par->scrH - 1) / par->fovV;
+    Xf += dyaw * gainX;
+    Yf += -dpit * gainY;
+    // 无界积分后仅做输出钳制（屏幕物理边界）；回转立即出界回移，无死区
+    Xf = clampf(Xf, 0.0f, (float)(par->scrW - 1));
+    Yf = clampf(Yf, 0.0f, (float)(par->scrH - 1));
+
+    // One-Euro 平滑 → 死区 → 差分输出（同 abs 模式尾段）
+    float Xs = euroX.filter(Xf, tMs);
+    float Ys = euroY.filter(Yf, tMs);
+    int tx = (int)lroundf(Xs), ty = (int)lroundf(Ys);
+    int dx = tx - sentX, dy = ty - sentY;
+    int mag = dx < 0 ? -dx : dx; mag += dy < 0 ? -dy : dy;
+    if (mag > 0 && (mag >= (int)par->deadPx || speedEma > 2.0f)) {
+      if (moveCb) moveCb(dx, dy);
+      sentX += dx; sentY += dy;
     }
   }
-  prev = d; havePrevRate = true;
-  (void)tMs;
+  ratePrev = d;
 }
