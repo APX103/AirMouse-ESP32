@@ -148,6 +148,7 @@ void Pointer::exitFreeze() {
 }
 
 void Pointer::recenter() {
+  if (par->mode == MODE_RATE) return; // 无限模式没有锚点，光标在哪都对：不回中
   if (!havePrev) return; // 还没收到姿态报告时不回中
   Vec3 d = dW;
   if (vlen(d) < 0.01f && havePrev) d = qrot(lastQ, fwdVec());
@@ -244,8 +245,9 @@ void Pointer::onQuatRate(Quat q, uint32_t tMs) {
   float gainY = (par->scrH - 1) / par->fovV;
   Xf += yawRate * dt * gainX;
   Yf += -elevRate * dt * gainY;
-  Xf = clampf(Xf, 0.0f, (float)(par->scrW - 1));   // 屏幕边界仅是停靠位，回转立即出界
-  Yf = clampf(Yf, 0.0f, (float)(par->scrH - 1));
+  // 无限积分：绝不钳制模型。模型坐标与 OS 光标真实坐标只靠 dx/dy 连接、
+  // 存在未知偏移——钳制模型 = 在屏幕中间造空气墙（真实光标还没到边，模型先停）。
+  // 屏幕边缘的停靠由 OS 自己完成（到边丢增量，回转立即生效），与实体鼠标一致。
   ratePrev = elevAxis;
 
   // One-Euro 平滑 → 死区 → 差分输出
