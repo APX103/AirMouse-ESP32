@@ -1,0 +1,9 @@
+# 构建产物
+.build*/
+*.bin
+*.elf
+
+# 本地环境
+*.log
+desktop.ini
+.DS_Store
