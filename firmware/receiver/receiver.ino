@@ -12,6 +12,7 @@
 #include <USBHIDMouse.h>
 #include <WiFi.h>
 #include <esp_now.h>
+#include <esp_wifi.h>
 #include "esp32-hal-rgb-led.h"
 #include "airlink.h"
 
@@ -106,14 +107,17 @@ void setup() {
   delay(300);
   neopixelWrite(PIN_LED, 8, 0, 8);   // 紫：等待配对
   Serial.println("\n=== AirMouse-WL 接收端 (板A → USB HID) ===");
-  Serial.printf("本机 MAC: %s\n", WiFi.macAddress().c_str());
-  Serial.println("等待鼠标端广播…（先开板B，或按板B复位）");
 
   Mouse.begin();
   USB.begin();
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(false);
+  uint8_t myMac[6];
+  esp_wifi_get_mac(WIFI_IF_STA, myMac);  // 驱动初始化后即可读（macAddress()要start后才有效）
+  Serial.printf("本机 MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                myMac[0], myMac[1], myMac[2], myMac[3], myMac[4], myMac[5]);
+  Serial.println("等待鼠标端广播…（先开板B，或按板B复位）");
   if (esp_now_init() != ESP_OK) {
     Serial.println("!! esp_now_init 失败");
     return;
