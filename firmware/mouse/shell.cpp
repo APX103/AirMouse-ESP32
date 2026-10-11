@@ -115,20 +115,7 @@ void Shell::handle(char *line) {
     } else { Serial.println(F("? icm|bno")); return; }
     Serial.println(F("已设置（save + 断电重启生效）"));
   } else if (!strcasecmp(cmd, "save")) {
-    Preferences prefs;
-    prefs.begin("airmouse", false);
-    prefs.putFloat("fovH", par->fovH);      prefs.putFloat("fovV", par->fovV);
-    prefs.putUShort("scrW", par->scrW);     prefs.putUShort("scrH", par->scrH);
-    prefs.putUChar("fwd", par->fwd);        prefs.putBool("invX", par->invX);
-    prefs.putBool("invY", par->invY);       prefs.putUChar("addr", par->i2cAddr);
-    prefs.putUInt("i2cHz", par->i2cHz);     prefs.putUInt("hz", par->reportHz);
-    prefs.putFloat("euroFc", par->euroFc);  prefs.putFloat("euroBeta", par->euroBeta);
-    prefs.putUShort("deadPx", par->deadPx); prefs.putUShort("freezeMs", par->freezeMs);
-    prefs.putFloat("freezeDeg", par->freezeDeg); prefs.putBool("driftComp", par->driftComp);
-    prefs.putBool("softEdge", par->softEdge);
-    prefs.putFloat("rateGain", par->rateGain);   prefs.putUChar("mode", par->mode);
-    prefs.putUChar("sensor", par->sensor);
-    prefs.end();
+    saveToNvs();
     Serial.println(F("saved"));
   } else if (!strcasecmp(cmd, "load")) {
     loadFromNvs();
@@ -139,6 +126,23 @@ void Shell::handle(char *line) {
   } else {
     Serial.printf("? %s (help 查看)\n", cmd);
   }
+}
+
+void Shell::saveToNvs() {
+  Preferences prefs;
+  prefs.begin("airmouse", false);
+  prefs.putFloat("fovH", par->fovH);      prefs.putFloat("fovV", par->fovV);
+  prefs.putUShort("scrW", par->scrW);     prefs.putUShort("scrH", par->scrH);
+  prefs.putUChar("fwd", par->fwd);        prefs.putBool("invX", par->invX);
+  prefs.putBool("invY", par->invY);       prefs.putUChar("addr", par->i2cAddr);
+  prefs.putUInt("i2cHz", par->i2cHz);     prefs.putUInt("hz", par->reportHz);
+  prefs.putFloat("euroFc", par->euroFc);  prefs.putFloat("euroBeta", par->euroBeta);
+  prefs.putUShort("deadPx", par->deadPx); prefs.putUShort("freezeMs", par->freezeMs);
+  prefs.putFloat("freezeDeg", par->freezeDeg); prefs.putBool("driftComp", par->driftComp);
+  prefs.putBool("softEdge", par->softEdge);
+  prefs.putFloat("rateGain", par->rateGain);   prefs.putUChar("mode", par->mode);
+  prefs.putUChar("sensor", par->sensor);
+  prefs.end();
 }
 
 void Shell::loadFromNvs() {

@@ -12,6 +12,7 @@ public:
   void begin(Params *p, Imu *i, Pointer *pointer, Link *l);
   void poll();
   void loadFromNvs();
+  void saveToNvs();   // 旋钮停转5s后由主循环调用自动保存
   bool logEnabled = false;
 
 private:

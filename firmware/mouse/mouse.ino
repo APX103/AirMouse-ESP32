@@ -1,5 +1,9 @@
 /*
- * AirMouse-Wireless 鼠标端（板 B + ICM20948）v0.2
+ * AirMouse-Wireless 鼠标端（板 B + ICM20948）v0.2.6
+ *
+ * v0.2.6 变更：
+ *   - 新增灵敏度旋钮：微雪 Rotation Sensor 增量编码器接 GPIO4/5/6，
+ *     旋一格 fov±2°(20~150)，按下恢复默认 75/55，停转5s自动NVS保存
  *
  * v0.2 变更：
  *   - 时间关键管线（按键→IMU→融合→指针→无线）跑在核心1的高优先级 FreeRTOS 任务，
@@ -15,6 +19,7 @@
 #include "imu.h"
 #include "pointer.h"
 #include "buttons.h"
+#include "encoder.h"
 #include "link.h"
 #include "shell.h"
 #include "statusled.h"
@@ -26,6 +31,8 @@ static Pointer pointer;
 static Buttons buttons;
 static Link airlink;
 static Shell shell;
+static Encoder encoder;              // 灵敏度旋钮（微雪增量编码器）
+static volatile uint32_t encActivityT = 0;  // 最后一次旋钮动作（loop 里 5s 后自动保存）
 
 static uint8_t btnBits = 0;          // AIRLINK_BTN_L|R
 static Quat lastQ;
@@ -48,6 +55,22 @@ static void pipelineTask(void *) {
     if (ev.rightDown) { btnBits |=  AIRLINK_BTN_R; pointer.clickFreeze(); pointer.clickSetTimer(millis()); }
     if (ev.rightUp)   { btnBits &= ~AIRLINK_BTN_R; pointer.clickUnfreeze(); }
     if (ev.recenter)  { pointer.recenter(); lastRecenterT = millis(); }
+
+    // 灵敏度旋钮：旋一格 fov±2°（fovV 按 55/75 比例跟随），按下恢复默认
+    // 灵敏度实时生效：积分模式每帧现读 par->fov，无重锚副作用
+    bool encPress = false;
+    int8_t detents = encoder.poll(encPress);
+    if (detents != 0) {
+      float fh = params.fovH + 2.0f * detents;
+      if (fh < 20.0f) fh = 20.0f;
+      if (fh > 150.0f) fh = 150.0f;
+      pointer.setFov(fh, fh * (55.0f / 75.0f));
+      encActivityT = millis();
+    }
+    if (encPress) {
+      pointer.setFov(75.0f, 55.0f);
+      encActivityT = millis();
+    }
 
     // 传感器 → 指针管线
     Quat q;
@@ -78,6 +101,7 @@ void setup() {
   setCpuFrequencyMhz(160);           // 降温：融合计算 0.02ms，160MHz 绰绰有余
   Serial.begin(115200);
   buttons.begin();
+  encoder.begin();
   ledRGB(8, 8, 0);
   delay(300);
 
@@ -94,7 +118,7 @@ void setup() {
 
   bool imuOk = imu.begin(params.sensor, params.i2cAddr, params.i2cHz);
 
-  Serial.printf("\n=== AirMouse-WL 鼠标端 v0.2 (板B+IMU) | CPU=%uMHz | MAC=%s ===\n",
+  Serial.printf("\n=== AirMouse-WL 鼠标端 v0.2.6 (板B+IMU) | CPU=%uMHz | MAC=%s ===\n",
                 getCpuFrequencyMhz(), WiFi.macAddress().c_str());
   if (imuOk) {
     Serial.printf("%s @0x%02X OK。板A接收端上电即自动配对。\n",
@@ -111,6 +135,19 @@ void setup() {
 
 void loop() {
   shell.poll();
+
+  // ---- 旋钮：fov 变化即打印；停转 5s 自动 NVS 保存（写 flash 放低优先级循环）----
+  static float fovShown = 0;
+  if (params.fovH != fovShown) {
+    fovShown = params.fovH;
+    Serial.printf("[旋钮] fov=%.0f/%.0f（越小越灵敏）\n", params.fovH, params.fovV);
+  }
+  uint32_t encT = encActivityT;
+  if (encT && millis() - encT >= 5000) {
+    encActivityT = 0;
+    shell.saveToNvs();
+    Serial.println(F("[旋钮] 5s 未动，已自动保存"));
+  }
 
   // ---- 遥测 CSV（低优先级，不影响采样）----
   static uint32_t tTel = 0;

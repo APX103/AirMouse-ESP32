@@ -13,6 +13,13 @@
 #define PIN_BTN_RC   0   // 回中键 = 板载 BOOT 键（注意：复位瞬间别按着，会进下载模式）
 #define PIN_LED     48   // 板载 WS2812 RGB（经 0Ω 电阻）
 
+// ============ 灵敏度旋钮：微雪 Rotation Sensor（增量编码器 20脉冲/圈 + 按键）============
+// 模块已带上拉，直接接即可；旋一格 = fov±2°，按下 = 恢复默认，停转5s自动保存
+#define PIN_ENC_A    4   // SIA（A相）
+#define PIN_ENC_B    5   // SIB（B相，判方向）
+#define PIN_ENC_SW   6   // SW（按下按键，另一端在模块内接GND）
+#define ENC_REVERSE  0   // 旋转方向和直觉相反时改成 1（免重新接线）
+
 // ============ 运行模式 ============
 enum RunMode : uint8_t { MODE_IDLE = 0, MODE_LOG = 1, MODE_RATE = 2, MODE_ABS = 3 };
 
