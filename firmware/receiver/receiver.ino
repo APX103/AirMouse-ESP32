@@ -113,6 +113,10 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(false);
+  // 强制驻留信道1（与鼠标端一致；默认信道受 NVS 历史影响可能各说各话）
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
   uint8_t myMac[6];
   esp_wifi_get_mac(WIFI_IF_STA, myMac);  // 驱动初始化后即可读（macAddress()要start后才有效）
   Serial.printf("本机 MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",

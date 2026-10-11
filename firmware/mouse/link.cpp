@@ -4,8 +4,13 @@
 static const uint8_t BROADCAST_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 bool Link::begin() {
-  WiFi.mode(WIFI_STA);            // 不关联任何 AP，STA 默认信道收发 ESP-NOW
+  WiFi.mode(WIFI_STA);            // 不关联任何 AP
   WiFi.disconnect(false);
+  // 强制驻留信道1：未关联 STA 的"默认信道"受 NVS 里历史 WiFi 配置影响，
+  // 两板可能各在各的信道 → 谁也收不到谁（ESP-NOW 经典坑），钉死才稳
+  esp_wifi_set_promiscuous(true);
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_promiscuous(false);
   if (esp_now_init() != ESP_OK) return false;
   esp_now_peer_info_t peer = {};
   memcpy(peer.peer_addr, BROADCAST_MAC, 6);
