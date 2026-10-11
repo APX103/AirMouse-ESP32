@@ -3,8 +3,8 @@
 
 // ============ airlink：鼠标端 ⇄ 接收端 无线协议（两份拷贝保持一致）============
 #define AIRLINK_MAGIC   0xA179
-#define AIRLINK_PLAIN_LEN  11                 // 无 abs 字段
-#define AIRLINK_ABS_LEN    15                 // 含 absX/absY
+#define AIRLINK_PLAIN_LEN  10                 // 无 abs 字段（2+2+2+2+1+1）
+#define AIRLINK_ABS_LEN    14                 // 含 absX/absY（+2+2）
 #define AIRLINK_PKT_LEN(N) ((N) + 1)          // + crc8
 
 #define AIRLINK_FLAG_ABS  0x01                // 包含 absX/absY（同步/心跳/warp）
