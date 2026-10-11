@@ -77,9 +77,12 @@ void Pointer::onQuat(Quat q, uint32_t tMs) {
   haveEntry = false;
   if (!par->driftComp) driftDps = 0;
 
-  // ---- 在线漂移补偿：把锚点反向旋回漂移量 ----
+  // ---- 在线漂移补偿 ----
+  // 符号推导：yaw 漂 +d 时，传感器报告系绕 ẑ 转 +d，任何固定指向的"报告方向"随之转 +d；
+  // 要保持"报告射线 vs 锚点"的夹角不变，锚点必须【同向】转 +d（v0.2.2 修：之前写成 -d，
+  // 补偿变双重漂移 → 锚点游走 → 水平饱和无 dx）
   if (par->driftComp && driftDps != 0) {
-    xhat = rotZ(xhat, -driftDps * DEG2RAD * dt);
+    xhat = rotZ(xhat, driftDps * DEG2RAD * dt);
   }
 
   // ---- ray-cast：射线与虚拟屏幕平面（x̂ 方向距离 1）求交 ----
