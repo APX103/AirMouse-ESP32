@@ -83,7 +83,8 @@ void Shell::handle(char *line) {
   } else if (!strcasecmp(cmd, "invx") && a1) { parseOnOff(a1, par->invX); Serial.printf("invX=%d\n", par->invX); }
   else if (!strcasecmp(cmd, "invy") && a1) { parseOnOff(a1, par->invY); Serial.printf("invY=%d\n", par->invY); }
   else if (!strcasecmp(cmd, "rate") && a1) {
-    imu->setReportHz(atoi(a1));
+    par->reportHz = (uint32_t)atol(a1);       // 必须写入参数，save 才能持久化（v0.2.1修）
+    imu->setReportHz(par->reportHz);
     Serial.printf("rate %luHz\n", (unsigned long)imu->reportHz());
   } else if (!strcasecmp(cmd, "addr") && a1) {
     par->i2cAddr = (uint8_t)strtol(a1, nullptr, 0);
@@ -167,8 +168,10 @@ void Shell::loadFromNvs() {
 }
 
 void Shell::printStat() {
-  Serial.printf("== AirMouse-WL 鼠标端 v0.2 | up %lus | 芯片温度 %d°C ==\n",
-                millis() / 1000UL, temperatureRead());
+  int t = temperatureRead();
+  Serial.printf("== AirMouse-WL 鼠标端 v0.2 | up %lus | %s ==\n",
+                millis() / 1000UL,
+                t > 0 ? (String("芯片温度 ") + t + "°C").c_str() : "温度N/A");
   Serial.printf("mode=%s sensor=%s imu=%s addr=0x%02X rate=%luHz cal=%u/3\n",
                 MODE_NAMES[par->mode],
                 par->sensor == SENSOR_BNO085 ? "bno085" : "icm20948",
