@@ -25,8 +25,9 @@ enum FwdAxis : uint8_t { FWD_PX = 0, FWD_NX, FWD_PY, FWD_NY, FWD_PZ, FWD_NZ };
 // ============ 可调参数（shell 热改 + NVS 掉电保存；默认值 = 方案文档 §5.8）============
 struct Params {
   // 指针映射
-  float    fovH      = 40.0f;  // 水平 FOV(°)：设备转到 ±fovH/2 时光标到屏幕左右边缘
-  float    fovV      = 30.0f;  // 垂直 FOV(°)
+  float    fovH      = 75.0f;  // 水平 FOV(°)：±fovH/2 覆盖屏幕宽。要'永不撞墙'就让它
+                                // 大于手腕自然转动范围（人腕yaw约±40°，75°即刻意才撞到）
+  float    fovV      = 55.0f;  // 垂直 FOV(°)
   uint16_t scrW      = 1920;   // 屏幕分辨率（内部绝对模型用）
   uint16_t scrH      = 1080;
   uint8_t  fwd       = FWD_PY; // 安装朝向，拿到手第一件事就是标定它
@@ -44,7 +45,7 @@ struct Params {
   uint16_t freezeMs  = 300;    // 点击冻结：按住多久后才允许转成拖拽
   float    freezeDeg = 3.0f;   // 点击冻结：姿态转动超过几度才转拖拽
   bool     driftComp = true;   // 在线 yaw 漂移补偿（v0.2 起默认开）
-  bool     softEdge  = true;   // 软边界：tanh 压缩映射，边缘渐近无硬锁（off=硬钳制）
+  bool     softEdge  = false;  // 软边界(tanh)边缘渐近：实测'永远差一点到不了边'手感更差，默认关
   float    rateGain  = 15.0f;  // MODE_RATE：px/deg（M2 验证用）
   uint8_t  mode      = MODE_ABS;
 };
